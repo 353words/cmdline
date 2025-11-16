@@ -300,6 +300,8 @@ On line 158 we use the `github.com/mattn/go-isatty` to know if we're printing to
 On line 162-164 we add color only if printing to terminal.
 And finally, on line 165 we print the output.
 
+_Note: The name `TTY` is an acronym to [Teleprinter](https://en.wikipedia.org/wiki/Teleprinter)._
+
 
 ### Looking Faster
 
@@ -310,25 +312,58 @@ One of the most common ways is to add progress indicators.
 **Listing 9: Adding A Spinner**
 
 ```go
-
+154     done := make(chan struct{})
+155     isTTY := isatty.IsTerminal(os.Stdout.Fd())
+156 
+157     if isTTY {
+158         go func() {
+159             spinners := `-\|/`
+160             i := 0
+161             ticker := time.NewTicker(100 * time.Millisecond)
+162             for {
+163                 select {
+164                 case <-done:
+165                     return
+166                 case <-ticker.C:
+167                     i = (i + 1) % len(spinners)
+168                     fmt.Printf(" %c\r", spinners[i])
+169                 }
+170             }
+171         }()
+172     }
+173 
+174     records, err := Query(r, filter)
+175     close(done)
+176     if err != nil {
+177         fmt.Fprintf(os.Stderr, "error: query - %v\n", err)
+178         os.Exit(1)
+179     }
+180 
+181     for _, r := range records {
+182         s := fmt.Sprintf("%v", r)
+183         if isTTY {
+184             s = colorize(s, pathQuery)
+185         }
+186         fmt.Println(s)
+187     }
 ```
+On line 154 we create a `done` channel.
+On lines 157-172 we create a goroutine (if in TTY). 
+This goroutine creates a ticker and then uses `select` to listen both on the ticker and `done` channel.
+On line 167 it increments the index of the current symbol and then prints it with `\r` that will return the cursor to the beginning of the line.
 
+On line 175 we close the `done` channel to stop the spinner and then continue to prints the results as before.
 
----
-initial/main.go
-help/main.go
-stdin/main.go
-signal/main.go
-color/main.go
-spinner/main.go
+_Note: You can get fancier progress with packages such as `github.com/schollz/progressbar/v3` and `https://github.com/charmbracelet/bubbletea`._
 
+### Summary
 
-app: grep over db
+Our code got more complicated than the initial version, but now it's a good command line citizen and gives the user a better experience. It's up to you to decide whether this effort is worth it.
+In some "one off" program I only read from stdin and write to stdout and that's enough, but once other people want to use my code I add more features to make it user friendly.
 
+The terminal your code runs in has a lot of capabilities, its worth investing the time to learn them.
+See [Bubble Tea](https://github.com/charmbracelet/bubbletea) for what you can get to.
 
--h
-read from stdin, output to stdout
-CTRL-C, CTRL-D, SIGPIPE
-color, escape codes
-itty
-spinner
+But always keep in mind the unix philosophy:
+
+> Write programs that do one thing and do it well. Write programs to work together. Write programs to handle text streams, because that is a universal interface.

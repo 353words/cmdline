@@ -151,44 +151,38 @@ func main() {
 		Path: pathQuery,
 	}
 
-	recCh, errCh := make(chan []Record), make(chan error)
-	go func() {
-		records, err := Query(r, filter)
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		recCh <- records
-	}()
-
-	spinners := `-\|/`
-	i := 0
-
+	done := make(chan struct{})
 	isTTY := isatty.IsTerminal(os.Stdout.Fd())
 
-	tick := time.NewTicker(100 * time.Millisecond)
-	for {
-		select {
-		case err := <-errCh:
-			fmt.Fprintf(os.Stderr, "error: query - %v\n", err)
-			os.Exit(1)
-		case records := <-recCh:
-
-			for _, r := range records {
-				s := fmt.Sprintf("%v", r)
-				if isTTY {
-					s = colorize(s, pathQuery)
+	if isTTY {
+		go func() {
+			spinners := `-\|/`
+			i := 0
+			ticker := time.NewTicker(100 * time.Millisecond)
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					i = (i + 1) % len(spinners)
+					fmt.Printf(" %c\r", spinners[i])
 				}
-				fmt.Println(s)
 			}
-			os.Exit(0)
-		case <-tick.C:
-			if !isTTY {
-				break
-			}
-			i = (i + 1) % len(spinners)
-			fmt.Printf(" %c\r", spinners[i])
+		}()
+	}
+
+	records, err := Query(r, filter)
+	close(done)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: query - %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, r := range records {
+		s := fmt.Sprintf("%v", r)
+		if isTTY {
+			s = colorize(s, pathQuery)
 		}
+		fmt.Println(s)
 	}
 }
