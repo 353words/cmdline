@@ -11,20 +11,19 @@ author = "mikit"
 ### Introduction
 
 Go is an excellent choice for writing command line applications.
-- It compiles to binary, the client doesn't need to install a runtime to run your app
+- It compiles to binary code, the client doesn't need to install a runtime to run your app
 - It compiles to static executable, the client doesn't need have specific shared libraries to run your app
 - It's easy to cross compile to various combination of operating system and architecture
-- Go is a joy to write in
+- It's fun to write code in Go ☺
 
 However, you need to follow some rules and understand some concepts in order to write good command line applications.
 In [The Art of Unix Programming](http://www.catb.org/esr/writings/taoup/html/) Eric Raymond [quotes](http://www.catb.org/esr/writings/taoup/html/ch01s06.html) Doug McIlroy:
 > This is the Unix philosophy: Write programs that do one thing and do it well. 
 > Write programs to work together. Write programs to handle text streams, because that is a universal interface.
 
-It's a good advice, and we'll see how we can follow it.
+It's good advice, and we'll see how we can follow it.
 
-
-As an example, we'll wreite an application that query a logs file.
+As an example, we'll write an application that query a logs file.
 Logs has the following fields:
 
 - Origin
@@ -37,7 +36,6 @@ Logs has the following fields:
 Our code will let the user query by the `Path` field.
 We have a `Query` utility function that queries the logs.
 I'm not going to show the code, only the function signature since their code isn't the point of this post.
-
 
 _Note: You can view the full source code at the [GitHub repo](https://github.com/353words/cmdline)_
 
@@ -65,7 +63,7 @@ func Query(r io.Reader, filter Filter) ([]Record, error) {
 
 ```
 
-Query gets an `io.Reader` to read the logs from and a filter, it return a slice of matching log records.
+Query gets an `io.Reader` to read the logs from and a filter, it returns a slice of matching log records.
 
 ### Providing Help
 
@@ -103,7 +101,7 @@ Let's start with simple initial code:
 
 ```
 
-Listing 2 show the initial code.
+Listing 2 shows the initial code.
 The `main` function accepts two arguments - a query and a log filename.
 On line 99 we open the file, on line 106 we create the filter and on line 110 we call `Query`.
 Finally, on lines 116-119 we print out the results.
@@ -123,9 +121,9 @@ main.main()
 
 Listing 3 shows what happens when the user tries to invoke the built-in help.
 Lucky for the user, the program fails.
-Image what how angry they will be if they ran `drop-db --help` and get `1,000,000 records deleted`.
+Imagine that instead they ran `clean-db --help` and got `1,000,000 records deleted`.
 
-The solution is to add support for `--help` (and `-h`).
+We'll add support for `--help` (and `-h`).
 We're going to use the built-in `flag` package, but [cobra](https://cobra.dev/), [cli](https://cli.urfave.org/) and others also support showing help.
 
 _Note: Using built-in packages reduces a lot of risk that comes with third-party packages._
@@ -158,7 +156,7 @@ On lines 109 and 110 we use `flag.Arg` instead of `os.Args`, `flag.Arg(i)` retur
 
 ### Reading from `os.Stdin`
 
-Say logs are compressed, some in `gzip` format and some in `bzip` format.
+Say ops compressed the logs, some in `gzip` format and some in `bzip` format.
 Adding support to various formats can be a log of work.
 Instead, we're going to support reading input from the standard input.
 This way, the user can use a command to unpack the log and pipe it to our program.
@@ -177,7 +175,7 @@ $ zcat logs.gz| ./logs index71
 
 Listing 5 shows how to pipe compressed logs to our program.
 
-The code changes are not that complicated.
+Here's how to add support for reading from the standard input.
 
 **Listing 6: Reading from Standard Input**
 
@@ -209,14 +207,18 @@ The code changes are not that complicated.
 121         defer file.Close()
 122 
 123         r = file
-124     }
+...
+
+130     records, err := Query(r, filter)
+...
 ```
 
-Listing 6 shows how to support read from the standard input.
+Listing 6 shows how to support reading from the standard input.
 On line 99 we mark the log file as optional by enclosing it in `[]`.
 On line 104 we check that we got 1 or 2 arguments.
 On line 111-113 we use `os.Stdin` if the user did not specify the `LOG_FILE` parameter or gave `-` as the log file name.
-Finally, on lines 114-123 we open the file as before if we get a file name.
+On lines 114-123 we open the file as before if we get a file name.
+On line 130 we change the call to `Query` to use `r` instead of `file`.
 
 _Note: `-` is the convention for standard input/output in command line applications._
 
@@ -224,12 +226,12 @@ _Note: `-` is the convention for standard input/output in command line applicati
 
 Our program prints to standard output.
 This output might be the input to another program, and the receiving program might not consume all the input.
-Or, the user might be bored and hit CTRL-C before getting all the output.
+Or, the user might get bored and hit CTRL-C before getting all the output.
 
 In both of these cases, our program will receive a signal.
-The your program receive a signal, it's like a panic, and `main` will not run an deferred cleanup code.
+Receiving a signal is like a panic, and `main` will not run any deferred cleanup code.
 
-_Note: To check this, add a `defer fmt.Println("CLEANUP")` to the code and then run `zcat logs.gz | ./logs i | head`. You will *not* see the `CLEANUP` output.
+_Note: To check this, add a `defer fmt.Println("CLEANUP")` to the code and then run `zcat logs.gz | ./logs i | head`. You will *not* see the `CLEANUP` output._
 
 To make sure cleanup code runs, you need to catch signals.
 
@@ -259,7 +261,7 @@ To make sure cleanup code runs, you need to catch signals.
 
 Listing 7 shows how to handle signals.
 On line 113 we create a buffered channel and on line 114 we tell `signal` to send a message to `ch` if the program receives `SIGPIPE` or `SIGTERM`. `SIGPIPE` happens when you print to standard output but it is closed (like in the `head` example above) and `SIGTERM` happens when the user hits `CTRL-C`.
-Since signal are platform dependent, we use the `golang.org/x/sys/unix` to get signal values.
+Since signals are platform dependent, we use the `golang.org/x/sys/unix` to get signal values.
 On lines 115-119 we create a goroutine that will get notified via `ch` that a signal was received.
 The goroutine logs and exits the program.
 
@@ -295,9 +297,9 @@ These are special sequences that your terminal interrupts.
 
 ```
 Listing 8 shows how to add color to the output.
-On lines 101-108 we create `colorize` that uses ANSI escape codes to color part of the output in red.
+On lines 101-108 we create a `colorize` that uses ANSI escape codes to color part of the output in red.
 On line 158 we use the `github.com/mattn/go-isatty` to know if we're printing to a terminal (vs writing to a file).
-On line 162-164 we add color only if printing to terminal.
+On line 162-164 we add color only if printing to the terminal.
 And finally, on line 165 we print the output.
 
 _Note: The name `TTY` is an acronym to [Teleprinter](https://en.wikipedia.org/wiki/Teleprinter)._
@@ -305,9 +307,9 @@ _Note: The name `TTY` is an acronym to [Teleprinter](https://en.wikipedia.org/wi
 
 ### Looking Faster
 
-Out code might take its time to run, and we don't want the users to give up.
+Our code might take its time to run, and we don't want the users to give up.
 One of the most common ways is to add progress indicators.
-[Studies](https://www.nngroup.com/articles/progress-indicators/) shown that user are willing to wait more time if there's something moving on the screen.
+[Studies](https://www.nngroup.com/articles/progress-indicators/) show that users are willing to wait more time if there's something moving on the screen.
 
 **Listing 9: Adding A Spinner**
 
@@ -350,16 +352,16 @@ One of the most common ways is to add progress indicators.
 On line 154 we create a `done` channel.
 On lines 157-172 we create a goroutine (if in TTY). 
 This goroutine creates a ticker and then uses `select` to listen both on the ticker and `done` channel.
-On line 167 it increments the index of the current symbol and then prints it with `\r` that will return the cursor to the beginning of the line.
+On line 167 it increments the index of the current symbol and then prints it with `\r` that returns the cursor to the beginning of the line.
 
-On line 175 we close the `done` channel to stop the spinner and then continue to prints the results as before.
+On line 175 we close the `done` channel to stop the spinner and then continue to print the results as before.
 
 _Note: You can get fancier progress with packages such as `github.com/schollz/progressbar/v3` and `https://github.com/charmbracelet/bubbletea`._
 
 ### Summary
 
 Our code got more complicated than the initial version, but now it's a good command line citizen and gives the user a better experience. It's up to you to decide whether this effort is worth it.
-In some "one off" program I only read from stdin and write to stdout and that's enough, but once other people want to use my code I add more features to make it user friendly.
+In some "one off" programs I only read from stdin and write to stdout and that's enough, but once other people want to use my code I add more features to make it user friendly.
 
 The terminal your code runs in has a lot of capabilities, its worth investing the time to learn them.
 See [Bubble Tea](https://github.com/charmbracelet/bubbletea) for what you can get to.
@@ -367,3 +369,5 @@ See [Bubble Tea](https://github.com/charmbracelet/bubbletea) for what you can ge
 But always keep in mind the unix philosophy:
 
 > Write programs that do one thing and do it well. Write programs to work together. Write programs to handle text streams, because that is a universal interface.
+
+What are your "must do" in command line applications? Let me know at `miki@ardanlabs.com`.
