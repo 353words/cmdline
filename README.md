@@ -65,6 +65,13 @@ func Query(r io.Reader, filter Filter) ([]Record, error) {
 
 Query gets an `io.Reader` to read the logs from and a filter, it returns a slice of matching log records.
 
+
+Our application will add a command line interface over the code. An example invocation is:
+
+```
+$ ./logs index69 2025-07-11.log
+```
+
 ### Providing Help
 
 Let's start with simple initial code:
